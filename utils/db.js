@@ -1,69 +1,52 @@
-import mongodb from 'mongodb';
+import { MongoClient } from 'mongodb';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 /**
  * Create class DBClient: DBClient should have:
- * The constructor that create a client to MongoDB:
+ * The constructor that creates a client to MongoDB:
  *      host: from the environment variable DB_HOST or default: localhost
- *      port: from environment variable DB_PORT or default: 27017
- *      database: from environment variable DB_DATABASE or default: files_manager
+ *      port: from the environment variable DB_PORT or default: 27017
+ *      database: from the environment variable DB_DATABASE or default: files_manager
  */
+
 class DBClient {
-    constructor() {
-        const host = process.env.DB_HOST || 'localhost';
-        const port = process.env.DB_PORT || 27017;
-        const database = process.env.DB_DATABASE || 'files_manager';
-        const dbUrl = `mongodb://${host}:${port}/${database}`;
+  // A class with basic connection to a mongodb server
+  constructor() {
+    const host = process.env.DB_HOST || 'localhost';
+    const port = process.env.DB_PORT || 27017;
+    const database = process.env.DB_DATABASE || 'files_manager';
 
-        this.client = new mongodb.MongoClient(dbUrl, { useUnifiedTopology: true });
-        this.isConnected = false;
+    const uri = `mongodb://${host}:${port}/${database}`;
+    const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+    this.client = client;
+    this.client.connect();
+    this.db = client.db(database);
+  }
 
-        this.client.connect()
-            .then(() => {
-                this.isConnected = true;
-                console.log('MongoDB connection successful');
-            })
-            .catch((err) => {
-                console.error('MongoDB connection error', err.message || err.toString());
-                this.isConnected = false;
-            });
-    }
+  // checks if the mongoddb is connected
+  isAlive() {
+    return this.client.topology.isConnected();
+  }
 
-    /**
-     * Check if the client connection to MongoDB server is active
-     * @returns {boolean}
-     */
-    isAlive() {
-        return this.isConnected;
+  async nbUsers() {
+    try {
+      const users = await this.db.collection('users').countDocuments();
+      return users;
+    } catch (err) {
+      throw new Error(`Unable to get number of users ${err.message}`);
     }
-    /**
-     * Retrieve number of users from database
-     * @returns {Promise<Number>}
-     */
-    async nbUsers() {
-        try {
-            const db = this.client.db();
-            const userCollection = db.collection('users');
-            return await userCollection.countDocuments();
-        } catch (err) {
-            console.error('Error counting users: ', err.message || err.toString());
-            return 0;
-        }
-    }
+  }
 
-    /**
-     * Retrieve number of files from database
-     * @returns {Promise<Number>}
-     */
-    async nbFiles() {
-        try {
-            const db = this.client.db();
-            const fileCollection = db.collection('files');
-            return await fileCollection.countDocuments();
-        } catch (err) {
-            console.error('Error counting files: ', err.message || err.toString());
-            return 0;
-        }
+  async nbFiles() {
+    try {
+      const files = await this.db.collection('files').countDocuments();
+      return files;
+    } catch (err) {
+      throw new Error(`Unable to get number of files ${err.message}`);
     }
+  }
 }
 
 const dbClient = new DBClient();
