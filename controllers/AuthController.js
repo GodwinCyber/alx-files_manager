@@ -1,6 +1,7 @@
 import { v4 as uuid4 } from 'uuid';
 import sha1 from 'sha1';
 import redisClient from '../utils/redis';
+import dbClient from '../utils/db';
 // import dbClient from '../utils/db';
 
 // AuthController.js that contains new endpoints:
@@ -18,18 +19,18 @@ import redisClient from '../utils/redis';
 class AuthController {
   static async getConnect(req, res) {
     const authHeader = req.header('Authorization');
-    if (authHeader || !authHeader.startsWith('Basic ')) {
+    if (!authHeader || !authHeader.startsWith('Basic ')) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     const base64Credentials = authHeader.slice(6);
-    const credentials = Buffer.from(base64Credentials, 'base64'.toString('utf-8'));
+    const credentials = Buffer.from(base64Credentials, 'base64').toString('utf-8');
     const [email, password] = credentials.split(':');
 
     if (!email || !password) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     const hashedPassword = sha1(password);
-    const user = await redisClient.db.collection('users').findOne({ email, password: hashedPassword });
+    const user = await dbClient.db.collection('users').findOne({ email, password: hashedPassword });
 
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized' });
